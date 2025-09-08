@@ -1,0 +1,103 @@
+@startuml
+title AI Video Understanding Workflow
+
+start
+:Input video_path;
+:(decision, segments) = decide_pipeline(video_path);
+
+switch (decision)
+case (ASR_ONLY)
+  :Extract ASR text from segments;
+  :Summarize ASR text;
+  :Return summary;
+  stop
+
+case (ASR_OCR)
+  partition "OCR over Video (general language steps)" {
+    :Open video and read basic info (total frames, fps, duration);
+    :Split the video timeline into equal-length chunks;
+    repeat
+      :For each chunk:\n• Select representative frame indices within the chunk\n  (cover start→end evenly);\n• Load those frames and capture their timestamps;
+      :Run OCR across the selected frames (multi-image OCR);
+      if (Any text found by OCR?) then (Yes)
+        :Create a simple mapping header:\n\"frame_index: mm:ss\" for each sampled frame;
+        :Prepend the mapping header to the OCR text excerpt;
+      else (No)
+        :Leave excerpt empty for this chunk;
+      endif
+      :Append a chunk summary containing:\n• chunk number, start/end seconds\n• sampled frame indices\n• timestamps\n• description = OCR excerpt (may be empty);
+      :Release frames and free caches/memory;
+    repeat while (more chunks?) is (Yes)
+    -> (No);
+  }
+  :Prepare a second-pass OCR excerpt by combining all chunk summaries;
+  :Extract ASR text from segments;
+  :Compose final extract:\n- Always include ASR excerpt (verbatim)\n- If OCR excerpt exists, append it as evidence\n  (verbatim; prefer for exact text/numbers);
+  :Summarize the combined extract;
+  :Return summary;
+  stop
+
+case (ASR_OCR_VLM)
+  partition "VLM + OCR + ASR over video (general steps)" {
+    :Open video and read basic info (total frames, fps, duration);
+    :Split the video into fixed-length chunks;
+    :Load the vision-language model;
+
+    repeat
+      :For each chunk:\n• Select representative frame indices\n• Load frames + capture timestamps;
+      :Run multi-image OCR on frames → ocr_excerpt;
+      if (Any OCR text?) then (Yes)
+        :Create mapping header:\n"frame_index: mm:ss" per sampled frame;\nPrepend header to ocr_excerpt;
+      else (No)
+        :Leave ocr_excerpt empty;
+      endif
+
+      :Get ASR excerpt for this time range\n(using segments → transcript_for_range);
+      :Build a chunk prompt with:\n• Chunk start/end times\n• asr_excerpt (verbatim)\n• ocr_excerpt (verbatim);
+      :Ask the VLM to describe the chunk\n(describe_video with frames + prompt) → desc;
+
+      :Append chunk summary with:\n• chunk_idx, start_sec, end_sec\n• frame_indices, timestamps\n• description = desc;
+      :Release frames and free memory/caches;
+    repeat while (more chunks?) is (Yes)
+    -> (No);
+  }
+  :Build second-pass input from all chunk_summaries;
+  :Summarize the assembled extract;
+  :Return summary;
+  stop
+
+case (VLM_OCR)
+  partition "VLM + OCR over video (no ASR, general steps)" {
+    :Open video and read basic info (total frames, fps, duration);
+    :Split the video into fixed-length chunks;
+    :Load the vision-language model;
+
+    repeat
+      :For each chunk:\n• Select representative frame indices\n• Load frames + capture timestamps;
+      :Run multi-image OCR on frames → ocr_excerpt;
+      if (Any OCR text?) then (Yes)
+        :Create mapping header:\n"frame_index: mm:ss" per sampled frame;\nPrepend header to ocr_excerpt;
+      else (No)
+        :Leave ocr_excerpt empty;
+      endif
+
+      :Set asr_excerpt = "" (no segments);
+      :Build a chunk prompt with:\n• Chunk start/end times\n• asr_excerpt (empty)\n• ocr_excerpt (verbatim);
+      :Ask the VLM to describe the chunk\n(describe_video with frames + prompt) → desc;
+
+      :Append chunk summary with:\n• chunk_idx, start_sec, end_sec\n• frame_indices, timestamps\n• description = desc;
+      :Release frames and free memory/caches;
+    repeat while (more chunks?) is (Yes)
+    -> (No);
+  }
+  :Build second-pass input from all chunk_summaries;
+  :Summarize the assembled extract;
+  :Return summary;
+  stop
+
+case (Unhandled)
+  :Raise error;
+  stop
+endswitch
+
+@enduml

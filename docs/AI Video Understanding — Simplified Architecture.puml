@@ -1,0 +1,44 @@
+@startuml
+title AI Video Understanding — Simplified Architecture
+
+actor User
+rectangle "Video File" as Video
+rectangle "Video Summary" as Summary
+
+package "Pipeline Decision" {
+  [Decide best method\nbased on speech, text, motion, visuals] as Decide
+}
+
+package "Processing Paths" {
+  [ASR_ONLY\n• Listen to speech\n• Summarize spoken words] as ASR_ONLY
+  [ASR_OCR\n• Listen to speech\n• Detect on-screen text\n• Combine both] as ASR_OCR
+  [ASR_OCR_VLM\n• Listen to speech\n• Detect on-screen text\n• Analyze visuals] as ASR_OCR_VLM
+  [VLM_OCR\n• Detect on-screen text\n(no speech used)\n• Analyze visuals]  as VLM_OCR
+}
+
+User --> Video
+Video --> Decide
+Decide --> ASR_ONLY : if speech is clear & enough
+Decide --> ASR_OCR : if speech is clear + text is visible
+Decide --> ASR_OCR_VLM : if mixed speech + visuals + text
+Decide --> VLM_OCR : if little speech but visuals/text important
+
+ASR_ONLY --> Summary
+ASR_OCR --> Summary
+ASR_OCR_VLM --> Summary
+VLM_OCR --> Summary
+Summary --> User
+
+note right of Decide
+Decision is made by quickly checking:
+- How much speech is present?
+- How many words per minute?
+- Is there text on screen?
+- Is there lots of motion or visual cues?
+end note
+
+note bottom of Summary
+The output is always a\nshort summary of the video.
+end note
+
+@enduml

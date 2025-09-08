@@ -1,0 +1,54 @@
+@startuml
+title Decide how to understand a video (ASR / OCR / VLM)
+
+start
+:Input: video_path;
+
+:'Probe the video' to collect metrics;
+:• Run ASR on audio (get segments, speech ratio, WPM, text);
+:• Sample frames for OCR (density, digit count);
+:• Estimate motion (frame-to-frame differences);
+:• Count visual keywords in ASR text;
+
+'Compute helper flags'
+:ocr_dense = (ocr_density >= 12) OR (ocr_digits >= 4);
+:visual_cues = (visual_keywords_hits >= 1);
+:high_motion = (motion_index >= 6.0);
+
+note right
+Key metrics
+- speech: speech_ratio (0..1)
+- wpm: words per minute from ASR
+- ocr_density: avg non-space chars/frame
+- ocr_digits: total digits across samples
+- motion_index: ~0..20+ (higher = more motion)
+- visual_keywords_hits: count from list
+end note
+
+if (speech < 0.15 AND (high_motion OR ocr_dense)) then (Yes)
+  :Decision = "VLM_OCR";
+  stop
+else (No)
+  if (speech >= 0.40 AND wpm >= 80) then (Yes)
+    if (ocr_dense) then (Yes)
+      :Decision = "ASR_OCR";
+      stop
+    else (No)
+      :Decision = "ASR_ONLY";
+      stop
+    endif
+  else (No)
+    if ((0.15 <= speech < 0.40) OR visual_cues OR ocr_dense) then (Yes)
+      :Decision = "ASR_OCR_VLM";
+      stop
+    else (No)
+      :Decision = "ASR_OCR"; 
+      note right
+      Fallback when none of the above matched.
+      end note
+      stop
+    endif
+  endif
+endif
+
+@enduml

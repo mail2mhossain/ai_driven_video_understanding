@@ -1,0 +1,30 @@
+@startuml
+title ASR_OCR — Speech + OCR
+
+start
+:Input video_path;
+:Run ASR on audio (get segments);
+:Open video and read basic info (frames, fps, duration);
+:Split video into fixed-length chunks;
+
+repeat
+  :For each chunk:\n• Select representative frame indices\n• Load frames and timestamps;
+  :Run multi-image OCR on frames → ocr_excerpt;
+  if (Any OCR text?) then (Yes)
+    :Create mapping header:\n"frame_index: mm:ss" per sampled frame;
+    :Prepend header to ocr_excerpt;
+  else (No)
+    :Leave ocr_excerpt empty;
+  endif
+  :Append chunk summary:\nchunk_idx, start/end sec, frame indices,\ntimestamps, description = ocr_excerpt (may be empty);
+  :Release frames and free memory;
+repeat while (more chunks?) is (Yes)
+-> (No)
+
+:Combine all chunk summaries → OCR second-pass excerpt;
+:Extract ASR text from segments (verbatim);
+:Compose final extract:\n- Always include ASR excerpt (verbatim)\n- If OCR excerpt exists, append as evidence (verbatim);
+:Summarize final extract → video_summary;
+:return video_summary;
+stop
+@enduml

@@ -1,0 +1,34 @@
+@startuml
+title ASR_OCR_VLM — Vision-Language + OCR + ASR
+
+start
+:Input video_path;
+:Run ASR on audio (get segments);
+:Open video and read basic info (frames, fps, duration);
+:Split video into fixed-length chunks;
+:Load the vision-language model;
+
+repeat
+  :For each chunk:\n• Select representative frame indices\n• Load frames and timestamps;
+  :Run multi-image OCR on frames → ocr_excerpt;
+  if (Any OCR text?) then (Yes)
+    :Create mapping header:\n"frame_index: mm:ss" per sampled frame;
+    :Prepend header to ocr_excerpt;
+  else (No)
+    :Leave ocr_excerpt empty;
+  endif
+
+  :Extract asr_excerpt for this time range\n(from segments);
+  :Build chunk prompt with:\n• chunk start/end times\n• asr_excerpt (verbatim)\n• ocr_excerpt (verbatim);
+  :Describe with VLM (frames + prompt) → desc;
+
+  :Append chunk summary:\nchunk_idx, start/end sec, frame indices,\ntimestamps, description = desc;
+  :Release frames and free memory;
+repeat while (more chunks?) is (Yes)
+-> (No)
+
+:Assemble all chunk summaries → second-pass input;
+:Summarize assembled extract → video_summary;
+:return video_summary;
+stop
+@enduml
