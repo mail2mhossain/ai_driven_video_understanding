@@ -57,5 +57,13 @@ if st.button("Describe", type="primary", disabled=uploaded_video is None):
     st.markdown("## Description")
     st.markdown(summary_md)
 
+    file_stem = Path(uploaded_video.name).stem if uploaded_video and uploaded_video.name else "summary"
+    st.download_button(
+        label="⬇️ Export summary as Markdown",
+        data=summary_md.encode("utf-8"),
+        file_name=f"{file_stem}.md",
+        mime="text/markdown",
+    )
+
 else:
     st.caption("Select a video file, then click **Describe**.")

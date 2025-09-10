@@ -124,6 +124,9 @@ class MainWindow(QMainWindow):
         self._worker: Optional[WorkflowWorker] = None
         self._logs = []
 
+        self._last_summary_md: Optional[str] = None          
+        self._default_summary_name: str = "summary.md"
+
         central = QWidget()
         self.setCentralWidget(central)
         root = QVBoxLayout(central)
@@ -146,8 +149,14 @@ class MainWindow(QMainWindow):
         self.describe_btn = QPushButton("Describe")
         self.describe_btn.setEnabled(False)
         self.describe_btn.clicked.connect(self.on_describe)
+
+        self.export_btn = QPushButton("Export Markdown…")    
+        self.export_btn.setEnabled(False)                    
+        self.export_btn.clicked.connect(self.on_export)
+
         controls_row.addStretch(1)
         controls_row.addWidget(self.describe_btn)
+        controls_row.addWidget(self.export_btn)
         root.addLayout(controls_row)
 
         # Status + Progress
@@ -200,6 +209,8 @@ class MainWindow(QMainWindow):
         self._logs.clear()
         self.logs_view.clear()
         self.summary_view.clear()
+        self._last_summary_md = None                
+        self.export_btn.setEnabled(False)
         self.status_label.setText("Starting…")
         self.progress_bar.setValue(0)
         self.describe_btn.setEnabled(False)
@@ -240,8 +251,46 @@ class MainWindow(QMainWindow):
         self.progress_bar.setValue(100)
         self.status_label.setText("Completed")
         self._render_markdown(summary_md)
+        self._last_summary_md = summary_md
+
+        try:
+            stem = Path(self.path_edit.text().strip()).stem or "summary"
+        except Exception:
+            stem = "summary"
+        self._default_summary_name = f"{stem}.md" 
+
+        self.export_btn.setEnabled(True)
         self.describe_btn.setEnabled(True)
         QApplication.restoreOverrideCursor()
+
+    def on_export(self):
+        if not self._last_summary_md:
+            QMessageBox.information(self, "No summary", "There is no summary to export yet.")
+            return
+
+        # Default path in user's home with derived filename
+        default_path = str(Path.home() / self._default_summary_name)
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Summary as Markdown",
+            default_path,
+            "Markdown Files (*.md);;All Files (*)"
+        )
+        if not path:
+            return
+
+        # Ensure .md extension if user omitted it
+        chosen = Path(path)
+        if chosen.suffix == "":
+            chosen = chosen.with_suffix(".md")
+
+        try:
+            # Write UTF-8 with Unix newlines
+            with open(chosen, "w", encoding="utf-8", newline="\n") as f:
+                f.write(self._last_summary_md)
+            QMessageBox.information(self, "Saved", f"Summary saved to:\n{chosen}")
+        except Exception as e:
+            QMessageBox.critical(self, "Save Error", f"Could not save file:\n\n{e}")
 
     def _on_error(self, err: str):
         QApplication.restoreOverrideCursor()
@@ -274,7 +323,7 @@ class MainWindow(QMainWindow):
 def main():
     app = QApplication(sys.argv)
     win = MainWindow()
-    win.show()
+    win.showMaximized()
     sys.exit(app.exec_())
 
 
