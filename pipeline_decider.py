@@ -145,7 +145,7 @@ def decide_pipeline(video_path: str) -> str:
         return ("ASR_OCR_VLM", metrics.segments)
 
     # Fallback
-    return ("ASR_OCR", metrics.segments)
+    return ("ASR_OCR_VLM", metrics.segments)
 
 # ---------- Example usage ----------
 if __name__ == "__main__":

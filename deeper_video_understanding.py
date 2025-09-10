@@ -180,7 +180,7 @@ def chunk_frame_ranges(
         if len(ranges) > 1_000_000:
             raise RuntimeError("Too many chunks; check parameters for stride/overlap.")
 
-    print(f"[Chunking] Total chunks: {len(ranges)}  "
+        print(f"[Chunking] Total chunks: {len(ranges)}  "
           f"(chunk={chunk_seconds}s, overlap={overlap_seconds}s, stride={stride}s)")
     return ranges
 
@@ -525,12 +525,16 @@ def vlm_ocr_asr(video_path, segments):
 
     return chunk_summaries
 
+def qwen_ocr_multi_images(frames: List[Image.Image]) -> str:
+    from qwen_2_5_VL import multi_image_understanding
+    return multi_image_understanding(frames)
+
 # ---------------------------
 # Entry
 # ---------------------------
 if __name__ == "__main__":
     # Example: change to your file path
-    video_path = "Intellegent.mp4"   # e.g., "badminton.mp4" Intellegent.mp4
+    video_path = "badminton.mp4"   # e.g., "badminton.mp4" Intellegent.mp4
     vr = VideoReader(video_path, ctx=cpu(0))
     video_info = get_video_info(vr)
     total_frames = video_info["frames"]
@@ -538,4 +542,13 @@ if __name__ == "__main__":
     duration = video_info["duration_s"]
 
     ranges = chunk_frame_ranges(total_frames, fps, CHUNK_SECONDS, OVERLAP_SECONDS)
-    print(f"\n{ranges}")
+    model = _load_model()
+
+    for idx, (s_idx, e_idx, s_sec, e_sec) in enumerate(ranges, 1):
+        # Sample frames for this chunk
+        fidx = indices_for_range(s_idx, e_idx, FRAMES_PER_CHUNK)
+        frames, ts = get_frames(vr, fidx)
+        desc = qwen_ocr_multi_images(frames)
+        print(f"[Chunk {idx}] Description: {desc}")
+
+

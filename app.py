@@ -25,44 +25,6 @@ uploaded_video = st.file_uploader(
     type=["mp4", "mkv", "mov", "avi", "webm", "m4v"],
 )
 
-def run_pipeline_stub(report_cb):
-    """Replace this stub with your real probe/ASR/OCR/VLM/summarization pipeline.
-       Call report_cb(step=..., total=..., message=...) along the way.
-       Finally, return markdown text.
-    """
-    total_steps = 3
-
-    # Step 1 — Probe & decide
-    report_cb(step=1, total=total_steps, message="Deciding pipeline…")
-    time.sleep(0.4)
-    decision = "ASR_OCR_VLM"
-
-    # Step 2 — Chunking & extraction
-    report_cb(step=2, total=total_steps, message=f"Decided: {decision}")
-    time.sleep(0.6)
-    report_cb(step=2, total=total_steps, message="Generating chunking & extracting signals…")
-    time.sleep(0.6)
-
-    # Step 3 — Summarization
-    report_cb(step=3, total=total_steps, message="Summarizing…")
-    time.sleep(0.6)
-
-    summary_md = (
-        "### Global Summary\n"
-        "- The video explains a workflow using narration, on-screen text, and visuals.\n"
-        "- Key steps are demonstrated in short segments.\n\n"
-        "### Timeline\n"
-        "[00:00–00:30]: Introduction and context.\n\n"
-        "[00:30–01:00]: Method steps and results.\n\n"
-        "### Entities\n"
-        "- Presenter — demonstrates and explains.\n\n"
-        "### Notable Numbers & Quotes\n"
-        "None.\n\n"
-        "### Uncertainties\n"
-        "None.\n"
-    )
-    return summary_md
-
 if st.button("Describe", type="primary", disabled=uploaded_video is None):
     with st.spinner("Describing..."):
         status = st.status("Starting…", expanded=True)

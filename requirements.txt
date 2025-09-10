@@ -11,3 +11,6 @@ langchain_community
 langchain_huggingface
 faster-whisper
 streamlit
+qwen-vl-utils[decord]==0.0.8
+PyQt5
+markdown
